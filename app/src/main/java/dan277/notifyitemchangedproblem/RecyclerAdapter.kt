@@ -4,7 +4,6 @@ import android.content.Context
 import android.os.Build
 import android.speech.tts.TextToSpeech
 import android.support.v7.widget.RecyclerView
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -13,15 +12,10 @@ import kotlinx.android.synthetic.main.row.view.*
 import java.util.*
 
 
-class RecyclerAdapter(private val recyclerView: RecyclerView, private val itemsText: ArrayList<String>, private val itemsText1: ArrayList<String>, private val itemsArabic: ArrayList<String>, val context: Context, val t1: TextToSpeech?, val t2: TextToSpeech?) : RecyclerView.Adapter<ViewHolder>(), View.OnClickListener {
+class RecyclerAdapter(private val itemsText: ArrayList<String>, private val itemsText1: ArrayList<String>, private val itemsArabic: ArrayList<String>, private val context: Context, private val t1: TextToSpeech?, private val t2: TextToSpeech?) : RecyclerView.Adapter<ViewHolder>(), View.OnClickListener {
 
     private var expanded = Array<Boolean?>(itemsText1.size) { null }
-    //    private var playing = Array<Boolean>(itemsText1.size) { false }
-//    private lateinit var playingHolder: ViewHolder
-//    private lateinit var prevPlayingHolder: ViewHolder
     private val TTSID = "tts1"
-//    private var playingPos = -1
-//    private var prevPlayingPos = 0
 
     override fun getItemCount(): Int {
         return itemsText1.size
@@ -30,22 +24,20 @@ class RecyclerAdapter(private val recyclerView: RecyclerView, private val itemsT
     override fun onClick(v: View?) {
         if (v?.id == R.id.play_layout) {
             val holder = v.tag as ViewHolder
-
             val position = holder.adapterPosition
-            Log.d("-----", "-----")
             var stopped = false
             if (t1?.isSpeaking == true) {
                 t1.stop()
             }
             if (t2?.isSpeaking == true) {
+                if (Values.playingPos != position) {
+                    Values.previousPlayingPos = Values.playingPos
+                }
                 t2.stop()
                 stopped = true
             }
             if (!stopped || Values.playingPos != position) {
-//                playingHolder = holder
                 Values.playingPos = position
-                Log.d("onStart", Values.playingPos.toString())
-
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                     t2?.speak(itemsText[position], TextToSpeech.QUEUE_FLUSH, null, TTSID)
                 } else {
@@ -61,10 +53,6 @@ class RecyclerAdapter(private val recyclerView: RecyclerView, private val itemsT
             notifyItemChanged(position)
         }
     }
-
-//    init {
-//
-//    }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val view = LayoutInflater.from(context).inflate(R.layout.row, parent, false)
@@ -99,7 +87,6 @@ class RecyclerAdapter(private val recyclerView: RecyclerView, private val itemsT
             })
         } else {
             expandCollapse(holder)
-//            notifyItemChanged(position)
         }
         if (Values.playingPos == position) {
             holder.cmdPlay.text = "■"

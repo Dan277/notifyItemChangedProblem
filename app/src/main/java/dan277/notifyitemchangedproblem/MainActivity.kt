@@ -6,12 +6,12 @@ import android.os.Bundle
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import android.support.v7.widget.LinearLayoutManager
-import android.util.Log
 import kotlinx.android.synthetic.main.activity_main.*
 import java.util.ArrayList
 
 object Values {
     var playingPos = -1
+    var previousPlayingPos = -1
 }
 
 object Strings {
@@ -32,7 +32,9 @@ object Strings {
 class MainActivity : AppCompatActivity() {
 
     private var t1: TextToSpeech? = null
+    private var t1IsSpeaking = false
     private var t2: TextToSpeech? = null
+    private var t2IsSpeaking = false
     private val TTSID = "tts"
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -46,6 +48,7 @@ class MainActivity : AppCompatActivity() {
             if (status != TextToSpeech.ERROR) {
                 t1?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
                     override fun onStart(utteranceId: String?) {
+                        t1IsSpeaking = true
                         play_all.text = "Stop"
                     }
 
@@ -55,6 +58,7 @@ class MainActivity : AppCompatActivity() {
                     }
 
                     override fun onDone(utteranceId: String?) {
+                        t1IsSpeaking = false
                         play_all.text = "Play All"
                     }
 
@@ -69,12 +73,13 @@ class MainActivity : AppCompatActivity() {
             if (t1 == null) {
                 return@setOnClickListener
             }
+            if (t2IsSpeaking) {
+                t2?.stop()
+            }
             val t1 = t1!!
-            if (t1.isSpeaking) {
+            if (t1IsSpeaking) {
                 t1.stop()
-                if (play_all.text == "Stop") {
-                    return@setOnClickListener
-                }
+                return@setOnClickListener
             }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                 for (i in 0 until Strings.namesText.size) {
@@ -102,8 +107,10 @@ class MainActivity : AppCompatActivity() {
             if (status != TextToSpeech.ERROR) {
                 t2?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
                     override fun onStart(utteranceId: String?) {
-                        Log.d("onStart1", Values.playingPos.toString())
-                        recyclerView.adapter.notifyItemChanged(Values.playingPos)
+                        t2IsSpeaking = true
+                        runOnUiThread {
+                            recyclerView.adapter.notifyItemChanged(Values.playingPos)
+                        }
                     }
 
                     override fun onStop(utteranceId: String?, interrupted: Boolean) {
@@ -112,11 +119,21 @@ class MainActivity : AppCompatActivity() {
                     }
 
                     override fun onDone(utteranceId: String?) {
-                        Log.d("onDone", Values.playingPos.toString())
-                        val temp = Values.playingPos
-                        Values.playingPos = -1
-                        // Causes problems
-                        recyclerView.adapter.notifyItemChanged(temp)
+                        t2IsSpeaking = false
+                        if (Values.previousPlayingPos != -1) {
+                            val temp = Values.previousPlayingPos
+                            Values.previousPlayingPos = -1
+                            runOnUiThread {
+                                recyclerView.adapter.notifyItemChanged(temp)
+                            }
+                        }
+                        else if (Values.playingPos != -1) {
+                            val temp = Values.playingPos
+                            Values.playingPos = -1
+                            runOnUiThread {
+                                recyclerView.adapter.notifyItemChanged(temp)
+                            }
+                        }
                     }
 
                     override fun onError(utteranceId: String?) {}
@@ -124,13 +141,9 @@ class MainActivity : AppCompatActivity() {
 //                        super.onError(utteranceId, errorCode)
 //                    }
                 })
-//                t1?.setOnUtteranceCompletedListener {
-//                    Values.playingPos = -1
-////                    recyclerView.adapter.notifyItemChanged(Values.playingPos)
-//                }
             }
         })
-        recyclerView.adapter = RecyclerAdapter(recyclerView, Strings.namesText, Strings.namesText1, Strings.namesArabic, this, t1, t2)
+        recyclerView.adapter = RecyclerAdapter(Strings.namesText, Strings.namesText1, Strings.namesArabic, this, t1, t2)
     }
 
     private fun addNames() {
